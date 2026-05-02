@@ -1,12 +1,12 @@
+// Paksa Pterodactyl menggunakan ffmpeg dari node_modules
+process.env.FFMPEG_PATH = require('ffmpeg-static');
+
 const { joinVoiceChannel, createAudioPlayer, createAudioResource, AudioPlayerStatus, VoiceConnectionStatus, entersState, NoSubscriberBehavior } = require('@discordjs/voice');
 
 module.exports = async (client) => {
     const channelId = process.env.VOICE_CHANNEL_ID;
-    
-    // Menggunakan fallback url yang biasanya lebih lancar untuk bot
     const streamUrl = 'https://listen.moe/fallback'; 
     
-    // Setting behavior agar audio terus mengalir
     let player = createAudioPlayer({
         behaviors: {
             noSubscriber: NoSubscriberBehavior.Play,
@@ -25,9 +25,8 @@ module.exports = async (client) => {
             });
 
             const playStream = () => {
-                // Matikan inlineVolume untuk live stream agar pemrosesan CPU lebih ringan dan tidak lag/bisu
                 const resource = createAudioResource(streamUrl, {
-                    inlineVolume: false
+                    inlineVolume: false // Wajib false untuk stream Pterodactyl biar enteng
                 });
                 player.play(resource);
             };
@@ -35,21 +34,19 @@ module.exports = async (client) => {
             playStream();
             connection.subscribe(player);
 
-            // Tambahkan log ini agar kita tahu bot benar-benar memutar audionya
             player.on(AudioPlayerStatus.Playing, () => {
-                console.log('🎶 Audio Player Status: Sedang memutar lagu dari Listen.moe!');
+                console.log('🎶 Audio Player Status: Sedang memutar lagu!');
             });
 
             player.on('error', (error) => {
                 console.error('Audio Player Error:', error.message);
-                // Restart stream kalau error
                 setTimeout(playStream, 3000); 
             });
 
             player.on(AudioPlayerStatus.Idle, () => playStream());
 
             connection.on(VoiceConnectionStatus.Disconnected, async () => {
-                console.log("⚠️ Bot terputus dari Voice Channel, mencoba reconnect...");
+                console.log("⚠️ Bot terputus, mencoba reconnect...");
                 try {
                     await Promise.race([
                         entersState(connection, VoiceConnectionStatus.Signalling, 5_000),
@@ -61,7 +58,6 @@ module.exports = async (client) => {
                 }
             });
 
-            console.log("📻 Modul Radio 24/7 diaktifkan!");
         } catch (error) {
             console.error("❌ Gagal memulai radio:", error);
         }
